@@ -14,12 +14,15 @@ class Player:
     def __init__(self, life, deck):
         self.life = life
         self.deck = deck
+        self.hand = []
 
     def take_damage(self, damage):
         self.life -= damage
 
     def draw_card(self):
-        return self.deck.draw_card()
+        card = self.deck.draw_card()
+        self.hand.append(card)
+        return card
 
 class Game:
     def __init__(self, player1, player2):
