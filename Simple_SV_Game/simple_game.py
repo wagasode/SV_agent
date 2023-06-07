@@ -24,6 +24,10 @@ class Player:
         self.hand.append(card)
         return card
 
+    def play_card(self, card):
+        self.hand.remove(card)
+        return card
+
 class Game:
     def __init__(self, player1, player2):
         self.player1 = player1
@@ -62,8 +66,7 @@ def main():
 
         if card.cost <= game.turn:
             game.play_card(card)
-            print(f"Player {1 if game.current_player == game.player1 else 2} plays a card")
-
+            print(f"Player {1 if game.current_player == game.player1 else 2} plays a card: {card.attack} attack, {card.cost} cost")
 
         game.next_turn()
         print()
