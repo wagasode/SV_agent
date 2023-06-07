@@ -58,8 +58,7 @@ def main():
         print(f"Player 2 life: {game.player2.life}, deck: {len(game.player2.deck.cards)} cards")
 
         card = game.current_player.draw_card()
-        print(f"Player {1 if game.current_player == game.player1 else 2} draws a card")
-
+        print(f"Player {1 if game.current_player == game.player1 else 2} draws a card: {card.attack} attack, {card.cost} cost")
 
         if card.cost <= game.turn:
             game.play_card(card)
