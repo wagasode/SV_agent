@@ -50,12 +50,21 @@ def main():
     game = Game(player1, player2)
 
     while not game.is_game_over():
+        print(f"Turn {game.turn}:")
+        print(f"Player 1 life: {game.player1.life}, deck: {len(game.player1.deck.cards)} cards")
+        print(f"Player 2 life: {game.player2.life}, deck: {len(game.player2.deck.cards)} cards")
+
         card = game.current_player.draw_card()
+        print(f"Player {1 if game.current_player == game.player1 else 2} draws a card")
+
 
         if card.cost <= game.turn:
             game.play_card(card)
+            print(f"Player {1 if game.current_player == game.player1 else 2} plays a card")
+
 
         game.next_turn()
+        print()
 
     if game.player1.life <= 0 or len(game.player1.deck.cards) == 0:
         print("Player 2 wins!")
