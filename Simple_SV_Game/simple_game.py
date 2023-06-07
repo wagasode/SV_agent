@@ -40,3 +40,28 @@ class Game:
         if card.cost <= self.turn:
             self.opponent_player.take_damage(card.attack)
 
+def main():
+    deck1 = Deck([Card(1, 1) for _ in range(20)])
+    deck2 = Deck([Card(1, 1) for _ in range(20)])
+
+    player1 = Player(20, deck1)
+    player2 = Player(20, deck2)
+
+    game = Game(player1, player2)
+
+    while not game.is_game_over():
+        card = game.current_player.draw_card()
+
+        if card.cost <= game.turn:
+            game.play_card(card)
+
+        game.next_turn()
+
+    if game.player1.life <= 0 or len(game.player1.deck.cards) == 0:
+        print("Player 2 wins!")
+    else:
+        print("Player 1 wins!")
+
+if __name__ == "__main__":
+    main()
+
