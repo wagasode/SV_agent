@@ -30,11 +30,11 @@ class Player:
         self.hand.append(card)
         return card
 
-    def select_play_card(self, card_id):
+    def select_play_card(self):
+        card_id = random.choice([card.id for card in self.hand])
         for card in self.hand:
             if card.id == card_id:
                 return card
-        return None
 
     def display_hand(self):
         print(f"Turn player's hand: {[card.name for card in self.hand]}")
@@ -103,8 +103,7 @@ def main():
         game.display_draw_card(card)
         game.current_player.display_hand()
 
-        card_id = random.choice([card.id for card in game.current_player.hand])
-        card = game.current_player.select_play_card(card_id)
+        card = game.current_player.select_play_card()
         if card and card.cost <= game.turn:
             game.play_card(card)
             game.display_play_card(card)
