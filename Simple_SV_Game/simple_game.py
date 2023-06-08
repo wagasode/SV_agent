@@ -46,11 +46,12 @@ class Game:
         self.player2 = player2
         self.current_player = random.choice([self.player1, self.player2]) 
         self.opponent_player = self.player2 if self.current_player == self.player1 else self.player1
+        self.second_player = self.opponent_player
         self.turn = 1
 
     def next_turn(self):
         self.current_player, self.opponent_player = self.opponent_player, self.current_player
-        if self.current_player == self.player1: 
+        if self.current_player != self.second_player: 
             self.turn += 1
 
     def is_game_over(self):
