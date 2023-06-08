@@ -1,7 +1,8 @@
 import random
 
 class Card:
-    def __init__(self, attack, cost):
+    def __init__(self, name, attack, cost):
+        self.name = name
         self.attack = attack
         self.cost = cost
 
@@ -26,7 +27,10 @@ class Player:
         self.hand.append(card)
         return card
 
-    def play_card(self, card):
+    def play_card(self):
+        if not self.hand:
+            return None
+        card = random.choice(self.hand)
         self.hand.remove(card)
         return card
 
@@ -51,8 +55,8 @@ class Game:
             self.opponent_player.take_damage(card.attack)
 
 def main():
-    deck1 = Deck([Card(1, 1) for _ in range(20)])
-    deck2 = Deck([Card(1, 1) for _ in range(20)])
+    deck1 = Deck([Card("Card1", 1, 1) for _ in range(10)] + [Card("Card2", 2, 2) for _ in range(10)])
+    deck2 = Deck([Card("Card1", 1, 1) for _ in range(10)] + [Card("Card2", 2, 2) for _ in range(10)])
 
     player1 = Player(20, deck1)
     player2 = Player(20, deck2)
