@@ -1,3 +1,5 @@
+import random
+
 class Card:
     def __init__(self, attack, cost):
         self.attack = attack
@@ -32,13 +34,14 @@ class Game:
     def __init__(self, player1, player2):
         self.player1 = player1
         self.player2 = player2
-        self.current_player = player1
-        self.opponent_player = player2
+        self.current_player = random.choice([self.player1, self.player2]) 
+        self.opponent_player = self.player2 if self.current_player == self.player1 else self.player1
         self.turn = 1
 
     def next_turn(self):
         self.current_player, self.opponent_player = self.opponent_player, self.current_player
-        self.turn += 1
+        if self.current_player == self.player1: 
+            self.turn += 1
 
     def is_game_over(self):
         return self.player1.life <= 0 or self.player2.life <= 0 or len(self.player1.deck.cards) == 0 or len(self.player2.deck.cards) == 0
@@ -57,7 +60,7 @@ def main():
     game = Game(player1, player2)
 
     while not game.is_game_over():
-        print(f"Turn {game.turn}:")
+        print(f"Turn {game.turn}, Player {1 if game.current_player == game.player1 else 2}:")
         print(f"Player 1 life: {game.player1.life}, deck: {len(game.player1.deck.cards)} cards")
         print(f"Player 2 life: {game.player2.life}, deck: {len(game.player2.deck.cards)} cards")
 
