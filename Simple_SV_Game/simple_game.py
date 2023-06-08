@@ -122,7 +122,7 @@ def main():
                 if selected_card.cost <= game.current_player.temp_pp:
                     print(f"cost: {selected_card.cost}, remained_pp: {game.current_player.temp_pp}/{game.current_player.max_pp}")
                     game.play_card(selected_card)
-                    game.display_play_card(card)
+                    game.display_play_card(selected_card)
                     game.current_player.change_play_point(-1 * selected_card.cost)
                     game.current_player.display_hand()
             else:
