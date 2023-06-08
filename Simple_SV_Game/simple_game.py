@@ -38,7 +38,7 @@ class Player:
         return None
 
     def display_hand(self):
-        print(f"Player's hand: {[card.name for card in self.hand]}")
+        print(f"Turn player's hand: {[card.name for card in self.hand]}")
 
 class Game:
     def __init__(self, player1, player2):
