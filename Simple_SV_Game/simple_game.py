@@ -30,7 +30,7 @@ class Player:
         self.hand.append(card)
         return card
 
-    def play_card(self, card_id):
+    def select_and_play_card(self, card_id):
         for card in self.hand:
             if card.id == card_id:
                 self.hand.remove(card)
