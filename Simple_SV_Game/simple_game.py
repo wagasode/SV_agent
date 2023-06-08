@@ -1,7 +1,10 @@
 import random
 
 class Card:
+    id_counter = 0
     def __init__(self, name, attack, cost):
+        self.id = Card.id_counter
+        Card.id_counter += 1
         self.name = name
         self.attack = attack
         self.cost = cost
@@ -27,12 +30,12 @@ class Player:
         self.hand.append(card)
         return card
 
-    def play_card(self):
-        if not self.hand:
-            return None
-        card = random.choice(self.hand)
-        self.hand.remove(card)
-        return card
+    def play_card(self, card_id):
+        for card in self.hand:
+            if card.id == card_id:
+                self.hand.remove(card)
+                return card
+        return None
 
 class Game:
     def __init__(self, player1, player2):
@@ -69,12 +72,12 @@ def main():
         print(f"Player 2 life: {game.player2.life}, deck: {len(game.player2.deck.cards)} cards")
 
         card = game.current_player.draw_card()
-        print(f"Player {1 if game.current_player == game.player1 else 2} draws a card: {card.attack} attack, {card.cost} cost")
+        print(f"Player {1 if game.current_player == game.player1 else 2} draws a card: {card.name} ({card.attack} attack, {card.cost} cost), id: {card.id}")
         print(f"Player {1 if game.current_player == game.player1 else 2}'s hand: {[card.name for card in game.current_player.hand]}")
 
         if card.cost <= game.turn:
             game.play_card(card)
-            print(f"Player {1 if game.current_player == game.player1 else 2} plays a card: {card.attack} attack, {card.cost} cost")
+            print(f"Player {1 if game.current_player == game.player1 else 2} plays a card: {card.name} ({card.attack} attack, {card.cost} cost), id: {card.id}")
             print(f"Player {1 if game.current_player == game.player1 else 2}'s hand: {[card.name for card in game.current_player.hand]}")
 
         game.next_turn()
