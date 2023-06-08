@@ -75,7 +75,9 @@ def main():
         print(f"Player {1 if game.current_player == game.player1 else 2} draws a card: {card.name} ({card.attack} attack, {card.cost} cost), id: {card.id}")
         print(f"Player {1 if game.current_player == game.player1 else 2}'s hand: {[card.name for card in game.current_player.hand]}")
 
-        if card.cost <= game.turn:
+        card_id = random.choice([card.id for card in game.current_player.hand])
+        card = game.current_player.select_and_play_card(card_id)
+        if card and card.cost <= game.turn:
             game.play_card(card)
             print(f"Player {1 if game.current_player == game.player1 else 2} plays a card: {card.name} ({card.attack} attack, {card.cost} cost), id: {card.id}")
             print(f"Player {1 if game.current_player == game.player1 else 2}'s hand: {[card.name for card in game.current_player.hand]}")
