@@ -47,9 +47,17 @@ class Game:
         self.opponent_player = self.player2 if self.current_player == self.player1 else self.player1
         self.second_player = self.opponent_player
         self.turn = 1
+        random.shuffle(self.current_player.deck.cards)
+        random.shuffle(self.opponent_player.deck.cards)
+        
         print("="*20)
         print(" **  GAME START  ** ")
         print("="*20)
+
+    def start_game(self):
+        for player in [self.current_player, self.opponent_player]:
+            for _ in range(3):
+                player.draw_card()
 
     def next_turn(self):
         self.current_player, self.opponent_player = self.opponent_player, self.current_player
@@ -85,6 +93,7 @@ def main():
     player2 = Player(20, deck2)
 
     game = Game(player1, player2)
+    game.start_game()
 
     while not game.is_game_over():
         game.display_turn()
