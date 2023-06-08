@@ -70,10 +70,12 @@ def main():
 
         card = game.current_player.draw_card()
         print(f"Player {1 if game.current_player == game.player1 else 2} draws a card: {card.attack} attack, {card.cost} cost")
+        print(f"Player {1 if game.current_player == game.player1 else 2}'s hand: {[card.name for card in game.current_player.hand]}")
 
         if card.cost <= game.turn:
             game.play_card(card)
             print(f"Player {1 if game.current_player == game.player1 else 2} plays a card: {card.attack} attack, {card.cost} cost")
+            print(f"Player {1 if game.current_player == game.player1 else 2}'s hand: {[card.name for card in game.current_player.hand]}")
 
         game.next_turn()
         print()
