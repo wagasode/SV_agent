@@ -3,8 +3,6 @@ import random
 class Card:
     id_counter = 0
     def __init__(self, name, attack, cost):
-        self.id = Card.id_counter
-        Card.id_counter += 1
         self.name = name
         self.attack = attack
         self.cost = cost
@@ -21,6 +19,16 @@ class Player:
         self.life = life
         self.deck = deck
         self.hand = []
+        self.play_point = 0
+
+    def init_play_point(self, turn):
+        self.play_point = turn
+        print(f"PP is initialized: {self.play_point}")
+
+    def change_play_point(self, variation):
+        a = self.play_point
+        self.play_point += variation
+        print(f"PP is changed from {a} to {self.play_point}")
 
     def take_damage(self, damage):
         self.life -= damage
@@ -30,11 +38,14 @@ class Player:
         self.hand.append(card)
         return card
 
-    def select_play_card(self):
-        card_id = random.choice([card.id for card in self.hand])
-        for card in self.hand:
-            if card.id == card_id:
-                return card
+    def select_play_card(self, remained_play_point):
+        playable_cards = [card for card in self.hand if card.cost <= remained_play_point]
+        while playable_cards:
+            if random.random() < 1 / (len(playable_cards) + 1):
+                print(f"Player selected PASS.")
+                return None
+            selected_card = random.choice(playable_cards)
+            return selected_card
 
     def display_hand(self):
         print(f"Turn player's hand: {[card.name for card in self.hand]}")
@@ -80,10 +91,10 @@ class Game:
             print(f"Player {i+1}'s life: {player.life}, deck: {len(player.deck.cards)} cards")
 
     def display_draw_card(self, card):
-        print(f"Player {1 if self.current_player == self.player1 else 2} draws a card: {card.name} ({card.attack} attack, {card.cost} cost), id: {card.id}")
+        print(f"Player {1 if self.current_player == self.player1 else 2} draws a card: {card.name} ({card.attack} attack, {card.cost} cost)")
 
     def display_play_card(self, card):
-        print(f"Player {1 if self.current_player == self.player1 else 2} plays a card: {card.name} ({card.attack} attack, {card.cost} cost), id: {card.id}")
+        print(f"Player {1 if self.current_player == self.player1 else 2} plays a card: {card.name} ({card.attack} attack, {card.cost} cost)")
 
 def main():
     deck1 = Deck([Card("Card1", 1, 1) for _ in range(10)] + [Card("Card2", 2, 2) for _ in range(10)])
@@ -103,12 +114,18 @@ def main():
         game.display_draw_card(card)
         game.current_player.display_hand()
 
-        card = game.current_player.select_play_card()
-        if card and card.cost <= game.turn:
-            game.play_card(card)
-            game.display_play_card(card)
-            game.current_player.display_hand()
-
+        game.current_player.init_play_point(game.turn)
+        while game.current_player.play_point > 0:
+            selected_card = game.current_player.select_play_card(game.current_player.play_point)
+            if selected_card:
+                if selected_card.cost <= game.current_player.play_point:
+                    print(f"cost: {selected_card.cost}, remained_pp: {game.current_player.play_point}")
+                    game.play_card(selected_card)
+                    game.display_play_card(card)
+                    game.current_player.change_play_point(-1 * selected_card.cost)
+                    game.current_player.display_hand()
+            else:
+                break
         game.next_turn()
         print()
 
