@@ -48,6 +48,9 @@ class Game:
         self.opponent_player = self.player2 if self.current_player == self.player1 else self.player1
         self.second_player = self.opponent_player
         self.turn = 1
+        print("="*20)
+        print(" **  GAME START  ** ")
+        print("="*20)
 
     def next_turn(self):
         self.current_player, self.opponent_player = self.opponent_player, self.current_player
@@ -102,9 +105,13 @@ def main():
         print()
 
     if game.player1.life <= 0 or len(game.player1.deck.cards) == 0:
-        print("Player 2 wins!")
+        print("="*25)
+        print(" **  Player 2 wins!  ** ")
+        print("="*25)
     else:
-        print("Player 1 wins!")
+        print("="*25)
+        print(" ** Player 1 wins!  ** ")
+        print("="*25)
 
 if __name__ == "__main__":
     main()
