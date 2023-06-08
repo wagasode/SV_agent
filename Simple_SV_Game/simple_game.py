@@ -19,16 +19,17 @@ class Player:
         self.life = life
         self.deck = deck
         self.hand = []
-        self.play_point = 0
+        self.max_pp, self.temp_pp = 0, 0
 
     def init_play_point(self, turn):
-        self.play_point = turn
-        print(f"PP is initialized: {self.play_point}")
+        self.max_pp = turn
+        self.temp_pp = self.max_pp
+        print(f"PP is initialized: {self.temp_pp}/{self.max_pp}")
 
     def change_play_point(self, variation):
-        a = self.play_point
-        self.play_point += variation
-        print(f"PP is changed from {a} to {self.play_point}")
+        a = self.temp_pp
+        self.temp_pp += variation
+        print(f"PP is changed {a}/{self.max_pp} >>> {self.temp_pp}/{self.max_pp}")
 
     def take_damage(self, damage):
         self.life -= damage
@@ -115,11 +116,11 @@ def main():
         game.current_player.display_hand()
 
         game.current_player.init_play_point(game.turn)
-        while game.current_player.play_point > 0:
-            selected_card = game.current_player.select_play_card(game.current_player.play_point)
+        while game.current_player.temp_pp > 0:
+            selected_card = game.current_player.select_play_card(game.current_player.temp_pp)
             if selected_card:
-                if selected_card.cost <= game.current_player.play_point:
-                    print(f"cost: {selected_card.cost}, remained_pp: {game.current_player.play_point}")
+                if selected_card.cost <= game.current_player.temp_pp:
+                    print(f"cost: {selected_card.cost}, remained_pp: {game.current_player.temp_pp}/{game.current_player.max_pp}")
                     game.play_card(selected_card)
                     game.display_play_card(card)
                     game.current_player.change_play_point(-1 * selected_card.cost)
