@@ -37,6 +37,9 @@ class Player:
                 return card
         return None
 
+    def display_hand(self):
+        print(f"Player's hand: {[card.name for card in self.hand]}")
+
 class Game:
     def __init__(self, player1, player2):
         self.player1 = player1
@@ -57,6 +60,19 @@ class Game:
         if card.cost <= self.turn:
             self.opponent_player.take_damage(card.attack)
 
+    def display_turn(self):
+        print(f"Turn {self.turn}, Player {1 if self.current_player == self.player1 else 2}'s turn")
+
+    def display_player_status(self):
+        for i, player in enumerate([self.player1, self.player2]):
+            print(f"Player {i+1}'s life: {player.life}, deck: {len(player.deck.cards)} cards")
+
+    def display_draw_card(self, card):
+        print(f"Player {1 if self.current_player == self.player1 else 2} draws a card: {card.name} ({card.attack} attack, {card.cost} cost), id: {card.id}")
+
+    def display_play_card(self, card):
+        print(f"Player {1 if self.current_player == self.player1 else 2} plays a card: {card.name} ({card.attack} attack, {card.cost} cost), id: {card.id}")
+
 def main():
     deck1 = Deck([Card("Card1", 1, 1) for _ in range(10)] + [Card("Card2", 2, 2) for _ in range(10)])
     deck2 = Deck([Card("Card1", 1, 1) for _ in range(10)] + [Card("Card2", 2, 2) for _ in range(10)])
@@ -67,20 +83,19 @@ def main():
     game = Game(player1, player2)
 
     while not game.is_game_over():
-        print(f"Turn {game.turn}, Player {1 if game.current_player == game.player1 else 2}:")
-        print(f"Player 1 life: {game.player1.life}, deck: {len(game.player1.deck.cards)} cards")
-        print(f"Player 2 life: {game.player2.life}, deck: {len(game.player2.deck.cards)} cards")
+        game.display_turn()
+        game.display_player_status()
 
         card = game.current_player.draw_card()
-        print(f"Player {1 if game.current_player == game.player1 else 2} draws a card: {card.name} ({card.attack} attack, {card.cost} cost), id: {card.id}")
-        print(f"Player {1 if game.current_player == game.player1 else 2}'s hand: {[card.name for card in game.current_player.hand]}")
+        game.display_draw_card(card)
+        game.current_player.display_hand()
 
         card_id = random.choice([card.id for card in game.current_player.hand])
         card = game.current_player.select_and_play_card(card_id)
         if card and card.cost <= game.turn:
             game.play_card(card)
-            print(f"Player {1 if game.current_player == game.player1 else 2} plays a card: {card.name} ({card.attack} attack, {card.cost} cost), id: {card.id}")
-            print(f"Player {1 if game.current_player == game.player1 else 2}'s hand: {[card.name for card in game.current_player.hand]}")
+            game.display_play_card(card)
+            game.current_player.display_hand()
 
         game.next_turn()
         print()
