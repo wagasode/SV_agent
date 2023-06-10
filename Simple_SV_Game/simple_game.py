@@ -1,3 +1,4 @@
+import json
 import random
 
 class Card:
@@ -15,7 +16,7 @@ class Deck:
         return self.cards.pop()
 
 class Player:
-    def __init__(self, life, deck):
+    def __init__(self, deck, life=20):
         self.life = life
         self.deck = deck
         self.hand = []
@@ -52,19 +53,35 @@ class Player:
         print(f"Turn player's hand: {[card.name for card in self.hand]}")
 
 class Game:
-    def __init__(self, player1, player2):
-        self.player1 = player1
-        self.player2 = player2
+    def __init__(self):
+        self.cards_data = self.load_cards_from_json('cards.json')['cards']
+        deck1 = self.create_deck(self.cards_data)
+        deck2 = self.create_deck(self.cards_data)
+
+        self.player1 = Player(deck1)
+        self.player2 = Player(deck2)
         self.current_player = random.choice([self.player1, self.player2]) 
         self.opponent_player = self.player2 if self.current_player == self.player1 else self.player1
         self.second_player = self.opponent_player
+
         self.turn = 1
-        random.shuffle(self.current_player.deck.cards)
-        random.shuffle(self.opponent_player.deck.cards)
         
         print("="*20)
         print(" **  GAME START  ** ")
         print("="*20)
+
+    def load_cards_from_json(self, json_file):
+        with open(json_file, 'r') as f:
+            cards_data = json.load(f)
+        return cards_data
+
+    def create_deck(self, cards_data):
+        deck_cards = []
+        for card_data in cards_data:
+            for _ in range(10):
+                deck_cards.append(Card(card_data["name"], card_data["attack"], card_data["cost"]))
+        random.shuffle(deck_cards)
+        return Deck(deck_cards)
 
     def start_game(self):
         for player in [self.current_player, self.opponent_player]:
@@ -98,13 +115,7 @@ class Game:
         print(f"Player {1 if self.current_player == self.player1 else 2} plays a card: {card.name} ({card.attack} attack, {card.cost} cost)")
 
 def main():
-    deck1 = Deck([Card("Card1", 1, 1) for _ in range(10)] + [Card("Card2", 2, 2) for _ in range(10)])
-    deck2 = Deck([Card("Card1", 1, 1) for _ in range(10)] + [Card("Card2", 2, 2) for _ in range(10)])
-
-    player1 = Player(20, deck1)
-    player2 = Player(20, deck2)
-
-    game = Game(player1, player2)
+    game = Game()
     game.start_game()
 
     while not game.is_game_over():
