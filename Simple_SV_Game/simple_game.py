@@ -1,6 +1,10 @@
 import json
 import random
 
+from mctspy.tree.nodes import TwoPlayersGameMonteCarloTreeSearchNode
+from mctspy.tree.search import MonteCarloTreeSearch
+from mctspy.games.common import TwoPlayersGameState
+
 class Card:
     id_counter = 0
     def __init__(self, name, attack, cost):
@@ -49,17 +53,18 @@ class Player:
             selected_card = random.choice(playable_cards)
             return selected_card
 
+    def select_action_mcts(self, game_state):
+        mcts = MCTS(game_state)
+        best_action = mcts.search()
+        return best_action
+
     def display_hand(self):
         print(f"Turn player's hand: {[card.name for card in self.hand]}")
 
 class Game:
-    def __init__(self):
-        self.cards_data = self.load_cards_from_json('cards.json')['cards']
-        deck1 = self.create_deck(self.cards_data)
-        deck2 = self.create_deck(self.cards_data)
-
-        self.player1 = Player(deck1)
-        self.player2 = Player(deck2)
+    def __init__(self, player1, player2):
+        self.player1 = player1
+        self.player2 = player2
         self.current_player = random.choice([self.player1, self.player2]) 
         self.opponent_player = self.player2 if self.current_player == self.player1 else self.player1
         self.second_player = self.opponent_player
@@ -114,8 +119,70 @@ class Game:
     def display_play_card(self, card):
         print(f"Player {1 if self.current_player == self.player1 else 2} plays a card: {card.name} ({card.attack} attack, {card.cost} cost)")
 
+class GameState(TwoPlayersGameState):
+    def __init__(self, next_to_move=1):
+        self.cards_data = self.load_cards_from_json('cards.json')['cards']
+        deck1 = self.create_deck(self.cards_data)
+        deck2 = self.create_deck(self.cards_data)
+        self.player1 = Player(deck1)
+        self.player2 = Player(deck2)
+
+        self.state = {}
+        self.state['player1'] = player1
+        self.state['player2'] = player2
+        self.next_to_move = next_to_move
+        self.winner = None
+
+    def game_over(self):
+        # ゲームが終了した時に行われる処理
+        if self.winnter == self.player1:
+            print("="*25)
+            print(" **  Player 1 wins!  ** ")
+            print("="*25)
+        else:
+            print("="*25)
+            print(" **  Player 2 wins!  ** ")
+            print("="*25)
+
+    def is_game_over(self):
+        if is_game_over_with_life() or is_game_over_with_life():
+            return True
+        return False
+
+    def is_game_over_with_life(self):
+        if self.state['player1'].life <= 0:
+            self.winner = player2
+            return True
+        if self.state['player2'].life <= 0:
+            self.winner = player1
+            return True
+        return False
+
+    def is_game_over_with_draw(self, drawing_player):
+        if len(drawing_player.deck) <= 0:
+            self.winner = opponent_player(drawing_player)
+            return True
+        return False
+
+    def opponent_player(self, current_player):
+        if current_player == self.player1:
+            return self.player2
+        else:
+            return self.player1
+
+    def move(self, action):
+        # 指定された行動を実行
+        pass
+
+    def get_legal_actions(self):
+        # 可能な行動のリスト
+        pass
+
 def main():
-    game = Game()
+
+    initial_state = GameState()
+
+    game = Game(initial_state.player1, initial_state.player2)
     game.start_game()
 
     while not game.is_game_over():
@@ -142,13 +209,16 @@ def main():
         print()
 
     if game.player1.life <= 0 or len(game.player1.deck.cards) == 0:
-        print("="*25)
-        print(" **  Player 2 wins!  ** ")
-        print("="*25)
-    else:
-        print("="*25)
-        print(" ** Player 1 wins!  ** ")
-        print("="*25)
+
+    # ゲームの初期状態を作成
+    initial_state = CardGameState(state=...)
+
+    # 初期状態を用いてMCTSのルートノードを作成
+    root = TwoPlayersGameMonteCarloTreeSearchNode(state=initial_state)
+
+    # MCTSを実行
+    mcts = MonteCarloTreeSearch(root)
+    best_node = mcts.best_action(1000)
 
 if __name__ == "__main__":
     main()
