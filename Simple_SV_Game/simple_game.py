@@ -1,8 +1,17 @@
+import copy
+from datetime import datetime
 import json
+import os
 import random
+import sys
+
+import numpy as np
+
+from mctspy.tree.nodes import TwoPlayersGameMonteCarloTreeSearchNode
+from mctspy.tree.search import MonteCarloTreeSearch
+from mctspy.games.common import TwoPlayersAbstractGameState
 
 class Card:
-    id_counter = 0
     def __init__(self, name, attack, cost):
         self.name = name
         self.attack = attack
@@ -15,140 +24,316 @@ class Deck:
     def draw_card(self):
         return self.cards.pop()
 
+    def get_deck_num(self):
+        return len(self.cards)
+
 class Player:
     def __init__(self, deck, life=20):
         self.life = life
         self.deck = deck
         self.hand = []
         self.max_pp, self.temp_pp = 0, 0
+        self.play_rule = 'random'
 
-    def init_play_point(self, turn):
+    def update_pp(self, turn):
         self.max_pp = turn
         self.temp_pp = self.max_pp
-        print(f"PP is initialized: {self.temp_pp}/{self.max_pp}")
 
-    def change_play_point(self, variation):
+    def change_pp(self, variation):
         a = self.temp_pp
         self.temp_pp += variation
-        print(f"PP is changed {a}/{self.max_pp} >>> {self.temp_pp}/{self.max_pp}")
 
     def take_damage(self, damage):
         self.life -= damage
+    
+    def is_life_zero(self):
+        return self.life <= 0
 
     def draw_card(self):
+        if not self.deck.get_deck_num():
+            return None, True
         card = self.deck.draw_card()
         self.hand.append(card)
-        return card
+        return card, False
 
-    def select_play_card(self, remained_play_point):
-        playable_cards = [card for card in self.hand if card.cost <= remained_play_point]
-        while playable_cards:
-            if random.random() < 1 / (len(playable_cards) + 1):
-                print(f"Player selected PASS.")
-                return None
-            selected_card = random.choice(playable_cards)
-            return selected_card
+    def has_playable_cards(self):
+        if len([card for card in self.hand if card.cost <= self.temp_pp]):
+            return True
+        return False
 
-    def display_hand(self):
-        print(f"Turn player's hand: {[card.name for card in self.hand]}")
+    def select_card_random(self):
+        playable_cards = [card for card in self.hand if card.cost <= self.temp_pp]
+        if random.random() < 1 / (len(playable_cards) + 1):
+            return None
+        selected_card = random.choice(playable_cards)
+        return selected_card
 
+# Gameの状態を表現する
 class Game:
-    def __init__(self):
-        self.cards_data = self.load_cards_from_json('cards.json')['cards']
-        deck1 = self.create_deck(self.cards_data)
-        deck2 = self.create_deck(self.cards_data)
+    def __init__(self, cards_data):
+        self.CARDS_DATA = cards_data
+        template_deck1 = self.create_template_deck(self.CARDS_DATA)
+        template_deck2 = self.create_template_deck(self.CARDS_DATA)
+        self.player1 = Player(template_deck1, 20)
+        self.player2 = Player(template_deck2, 20)
+        self.player2.play_rule = 'mcts'
 
-        self.player1 = Player(deck1)
-        self.player2 = Player(deck2)
         self.current_player = random.choice([self.player1, self.player2]) 
         self.opponent_player = self.player2 if self.current_player == self.player1 else self.player1
         self.second_player = self.opponent_player
+        self.turn = 0
+        self.winner = None
+        self.real = True
 
-        self.turn = 1
-        
-        print("="*20)
-        print(" **  GAME START  ** ")
-        print("="*20)
-
-    def load_cards_from_json(self, json_file):
-        with open(json_file, 'r') as f:
-            cards_data = json.load(f)
-        return cards_data
-
-    def create_deck(self, cards_data):
+        '''
+        self.phase: int
+        None: Game didn't start yet.
+        0   : at_start_of_turn
+        1   : in_turn
+        2   : at_end_of_turn
+        -1  : Game ended.
+        '''
+        self.phase = None
+    
+    def create_template_deck(self, cards_data):
         deck_cards = []
+        # template_deck: card1:10, card2:10
         for card_data in cards_data:
             for _ in range(10):
                 deck_cards.append(Card(card_data["name"], card_data["attack"], card_data["cost"]))
         random.shuffle(deck_cards)
         return Deck(deck_cards)
 
-    def start_game(self):
-        for player in [self.current_player, self.opponent_player]:
-            for _ in range(3):
-                player.draw_card()
+    def setup_game(self):
+        print("="*20)
+        print(" **  GAME START  ** ")
+        print("="*20)
+        for _ in range(3):
+            drawn_card, _ = self.current_player.draw_card()
+            drawn_card, _ = self.opponent_player.draw_card()
+        self.turn = 1
+        self.phase = 0
 
-    def next_turn(self):
-        self.current_player, self.opponent_player = self.opponent_player, self.current_player
-        if self.current_player != self.second_player: 
-            self.turn += 1
+    def end_game(self):
+        if self.winner == self.player1:
+            print("="*25)
+            print(" **  Player 1 wins!  ** ")
+            print("="*25)
+        elif self.winner == self.player2:
+            print("="*25)
+            print(" **  Player 2 wins!  ** ")
+            print("="*25)
+        else:
+            print("="*25)
+            print(" **  No winner.  ** ")
+            print("="*25)
 
-    def is_game_over(self):
-        return self.player1.life <= 0 or self.player2.life <= 0 or len(self.player1.deck.cards) == 0 or len(self.player2.deck.cards) == 0
+# GameStateを管理する
+class GameManager():
+    def __init__(self, game):
+        self.game = game
+
+    # 自動的にゲームを進行する
+    def AutoGameStep(self):
+        if self.game.phase == 0:
+            return self.at_start_of_turn()
+        if self.game.phase == 1:
+            return self.in_turn()
+        if self.game.phase == 2:
+            return self.at_end_of_turn()
+
+    # self.gameに受け取ったactionを適用する
+    def ExecuteAction(self, action):
+        if action == 'PASS':
+            self.game.phase = 2
+        else:
+            # action: card_name(str)
+            # cardをプレイした後のGameStateにする
+            card = self.instanciate_card(action)
+            if self.play_card(card):
+                return True
+            if not self.game.current_player.has_playable_cards():
+                self.game.phase = 2
+        return False
+
+    def at_start_of_turn(self):
+        self.display('turn')
+        drawn_card, flag = self.game.current_player.draw_card()
+        if flag:
+            return True
+        if drawn_card:
+            self.display('draw_card', card=drawn_card)
+        self.display('players_status')
+        self.game.current_player.update_pp(self.game.turn)
+        self.display('current_player_pp_update')
+        self.display('current_player_hand')
+        self.game.phase = 1
+        return flag
+
+    # phaseが進む条件==PASS
+    def in_turn(self):
+        if self.game.real:
+            if self.game.current_player.play_rule == 'mcts':
+                print('Selecting by mcts.')
+                print('')
+                new_game_state = self.execute_mcts(copy.deepcopy(self.game))
+                self.game = new_game_state.game
+                self.game.real = True
+                print('update game state by mcts.')
+                self.display('game')
+                print()
+                if self.game.current_player.life <= 0:
+                    self.game.winner == self.game.opponent_player
+                    return True
+                if self.game.opponent_player.life <= 0:
+                    self.game.winner == self.game.current_player
+                    return True
+                return False
+        if self.game.current_player.play_rule == 'random':
+            print('Selecting by random.')
+            selected_card = self.game.current_player.select_card_random()
+            if selected_card == None:
+                # PASS -> phaseを進める
+                self.game.phase = 2
+                if self.game.real:
+                    print('Player selected PASS.')
+                return False
+            self.display('play_card', card=selected_card)
+            if self.play_card(selected_card):
+                self.game.winner = self.game.current_player
+                return True
+            self.display('current_player_hand')
+            if not self.game.current_player.has_playable_cards():
+                # playable card is None -> phaseを進める
+                self.game.phase = 2
+                if self.game.real:
+                    print('Player has no playable card.')
+            return False
+
+    def at_end_of_turn(self):
+        self.game.current_player, self.game.opponent_player = self.game.opponent_player, self.game.current_player
+        if self.game.current_player != self.game.second_player: 
+            self.game.turn += 1
+        if self.game.real:
+            print()
+        self.game.phase = 0
+        return False
 
     def play_card(self, card):
-        if card.cost <= self.turn:
-            self.current_player.hand.remove(card)
-            self.opponent_player.take_damage(card.attack)
+        self.game.current_player.change_pp(-1*card.cost)
+        self.display('current_player_pp_change', variation=-1*card.cost)
+        self.game.current_player.hand.remove(card)
+        self.game.opponent_player.take_damage(card.attack)
+        self.display('players_status')
+        return self.game.opponent_player.is_life_zero()
+        
+    def execute_mcts(self, game_state):
+        now_state = GameStateForMCTS(game_state)
+        root = MyMCTSNode(state=now_state)
+        mcts = MyMCTS(root)
+        best_node = mcts.best_action(10)
+        best_node.state.game_manager.display('game')
+        return best_node.state
 
-    def display_turn(self):
-        print(f"Turn {self.turn}, Player {1 if self.current_player == self.player1 else 2}'s turn")
+    def instanciate_card(self, card_name):
+        for card in self.game.current_player.hand:
+            if card.name == card_name:
+                return card
 
-    def display_player_status(self):
-        for i, player in enumerate([self.player1, self.player2]):
-            print(f"Player {i+1}'s life: {player.life}, deck: {len(player.deck.cards)} cards")
+    def display(self, command, card=None, variation=None):
+        if self.game.real:
+            if command == 'turn':
+                print(f"Turn {self.game.turn}, Player {1 if self.game.current_player == self.game.player1 else 2}'s turn")
+            elif command == 'players_status':
+                for i, player in enumerate([self.game.player1, self.game.player2]):
+                    print(f"Player {i+1}'s life: {player.life}, deck: {len(player.deck.cards)} cards")
+            elif command == 'draw_card':
+                print(f"Player {1 if self.game.current_player == self.game.player1 else 2} draws a card: {card.name} ({card.attack} attack, {card.cost} cost)")
+                print(f"Player {1 if self.game.current_player == self.game.player1 else 2} plays a card: {card.name} ({card.attack} attack, {card.cost} cost)")
+            elif command == 'current_player_hand':
+                print(f"Player {1 if self.game.current_player == self.game.player1 else 2}'s hand: {[i.name for i in self.game.current_player.hand]}")
+            elif command == 'current_player_pp_change':
+                print(f"PP is changed {self.game.current_player.temp_pp - variation}/{self.game.current_player.max_pp} >>> {self.game.current_player.temp_pp}/{self.game.current_player.max_pp}")
+            elif command == 'current_player_pp_update':
+                print(f"PP is initialized: {self.game.current_player.temp_pp}/{self.game.current_player.max_pp}")
+            elif command == 'game':
+                print(f"Turn {self.game.turn}, Player {1 if self.game.current_player == self.game.player1 else 2}'s turn")
+                for i, player in enumerate([self.game.player1, self.game.player2]):
+                    print(f"Player {i+1}'s life: {player.life}, deck: {len(player.deck.cards)} cards")
+                print(f"Player {1 if self.game.current_player == self.game.player1 else 2}'s hand: {[i.name for i in self.game.current_player.hand]}")
+                print(f"Player {1 if self.game.opponent_player == self.game.player1 else 2}'s hand: {[i.name for i in self.game.opponent_player.hand]}")
+                print(f"Player {1 if self.game.opponent_player == self.game.player1 else 2}'s PP is {self.game.current_player.temp_pp}/{self.game.current_player.max_pp}")
 
-    def display_draw_card(self, card):
-        print(f"Player {1 if self.current_player == self.player1 else 2} draws a card: {card.name} ({card.attack} attack, {card.cost} cost)")
+# MCTSの探索実行時に使用するGameのState
+class GameStateForMCTS(TwoPlayersAbstractGameState):
+    def __init__(self, game):
+        self.game = game
+        self.game_manager = GameManager(self.game)
+        self.game.real = False
+        self.next_to_move = 1 if self.game.current_player == self.game.player1 else -1
 
-    def display_play_card(self, card):
-        print(f"Player {1 if self.current_player == self.player1 else 2} plays a card: {card.name} ({card.attack} attack, {card.cost} cost)")
+    @property
+    def game_result(self):
+        if self.game.winner == None:
+            return None
+        return 1 if self.game.winner == self.game.player1 else -1
+
+    def is_game_over(self):
+        return self.game_result is not None
+
+    def move(self, action):
+        if self.game.phase in [0, 2]:
+            _ = self.game_manager.AutoGameStep()
+            return copy.deepcopy(self)
+        else:
+            new_game_state = copy.deepcopy(self)
+            if new_game_state.game_manager.ExecuteAction(action):
+                new_game_state.game.winner = new_game_state.game.current_player
+            return new_game_state
+
+    def get_legal_actions(self):
+        playable_cards = [card.name for card in self.game.current_player.hand if card.cost <= self.game.current_player.temp_pp]
+        playable_cards.append('PASS')
+        return playable_cards
+
+class MyMCTSNode(TwoPlayersGameMonteCarloTreeSearchNode):
+    def __init__(self, state, parent=None):
+        super().__init__(state, parent)
+
+    def best_child(self, c_param=1.4):
+        choices_weights = [
+            (c.q / c.n) + c_param * np.sqrt((2 * np.log(self.n) / c.n))
+            for c in self.children
+        ]
+        return self.children[np.argmax(choices_weights)]
+
+    def expand(self):
+        action = self.untried_actions.pop()
+        next_state = self.state.move(action)
+        child_node = MyMCTSNode(
+            next_state, parent=self
+        )
+        self.children.append(child_node)
+        return child_node
+
+
+class MyMCTS(MonteCarloTreeSearch):
+    def __init__(self, node):
+        super().__init__(node)
 
 def main():
-    game = Game()
-    game.start_game()
+    json_file = 'cards.json'
+    with open(json_file, 'r') as f:
+        cards_data = json.load(f)['cards']
 
-    while not game.is_game_over():
-        game.display_turn()
-        game.display_player_status()
+    game = Game(cards_data)
+    game.setup_game()
+    game_manager = GameManager(game)
 
-        card = game.current_player.draw_card()
-        game.display_draw_card(card)
-        game.current_player.display_hand()
-
-        game.current_player.init_play_point(game.turn)
-        while game.current_player.temp_pp > 0:
-            selected_card = game.current_player.select_play_card(game.current_player.temp_pp)
-            if selected_card:
-                if selected_card.cost <= game.current_player.temp_pp:
-                    print(f"cost: {selected_card.cost}, remained_pp: {game.current_player.temp_pp}/{game.current_player.max_pp}")
-                    game.play_card(selected_card)
-                    game.display_play_card(selected_card)
-                    game.current_player.change_play_point(-1 * selected_card.cost)
-                    game.current_player.display_hand()
-            else:
-                break
-        game.next_turn()
-        print()
-
-    if game.player1.life <= 0 or len(game.player1.deck.cards) == 0:
-        print("="*25)
-        print(" **  Player 2 wins!  ** ")
-        print("="*25)
-    else:
-        print("="*25)
-        print(" ** Player 1 wins!  ** ")
-        print("="*25)
+    while True:
+        if game_manager.AutoGameStep():
+            break
+    game_manager.game.end_game()
 
 if __name__ == "__main__":
     main()
