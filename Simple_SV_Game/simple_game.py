@@ -1,7 +1,11 @@
 import copy
 from datetime import datetime
 import json
+import os
 import random
+import sys
+
+import numpy as np
 
 from mctspy.tree.nodes import TwoPlayersGameMonteCarloTreeSearchNode
 from mctspy.tree.search import MonteCarloTreeSearch
@@ -115,9 +119,13 @@ class Game:
             print("="*25)
             print(" **  Player 1 wins!  ** ")
             print("="*25)
-        else:
+        elif self.winner == self.player2:
             print("="*25)
             print(" **  Player 2 wins!  ** ")
+            print("="*25)
+        else:
+            print("="*25)
+            print(" **  No winner.  ** ")
             print("="*25)
 
 # GameStateを管理する
@@ -174,6 +182,12 @@ class GameManager():
                 print('update game state by mcts.')
                 self.display('game')
                 print()
+                if self.game.current_player.life <= 0:
+                    self.game.winner == self.game.opponent_player
+                    return True
+                if self.game.opponent_player.life <= 0:
+                    self.game.winner == self.game.current_player
+                    return True
                 return False
         if self.game.current_player.play_rule == 'random':
             print('Selecting by random.')
@@ -186,6 +200,7 @@ class GameManager():
                 return False
             self.display('play_card', card=selected_card)
             if self.play_card(selected_card):
+                self.game.winner = self.game.current_player
                 return True
             self.display('current_player_hand')
             if not self.game.current_player.has_playable_cards():
@@ -209,13 +224,14 @@ class GameManager():
         self.display('current_player_pp_change', variation=-1*card.cost)
         self.game.current_player.hand.remove(card)
         self.game.opponent_player.take_damage(card.attack)
+        self.display('players_status')
         return self.game.opponent_player.is_life_zero()
         
     def execute_mcts(self, game_state):
         now_state = GameStateForMCTS(game_state)
-        root = TwoPlayersGameMonteCarloTreeSearchNode(state=now_state)
-        mcts = MonteCarloTreeSearch(root)
-        best_node = mcts.best_action(100)
+        root = MyMCTSNode(state=now_state)
+        mcts = MyMCTS(root)
+        best_node = mcts.best_action(10)
         best_node.state.game_manager.display('game')
         return best_node.state
 
@@ -233,7 +249,6 @@ class GameManager():
                     print(f"Player {i+1}'s life: {player.life}, deck: {len(player.deck.cards)} cards")
             elif command == 'draw_card':
                 print(f"Player {1 if self.game.current_player == self.game.player1 else 2} draws a card: {card.name} ({card.attack} attack, {card.cost} cost)")
-            elif command == 'play_card':
                 print(f"Player {1 if self.game.current_player == self.game.player1 else 2} plays a card: {card.name} ({card.attack} attack, {card.cost} cost)")
             elif command == 'current_player_hand':
                 print(f"Player {1 if self.game.current_player == self.game.player1 else 2}'s hand: {[i.name for i in self.game.current_player.hand]}")
@@ -257,13 +272,14 @@ class GameStateForMCTS(TwoPlayersAbstractGameState):
         self.game.real = False
         self.next_to_move = 1 if self.game.current_player == self.game.player1 else -1
 
+    @property
     def game_result(self):
         if self.game.winner == None:
             return None
         return 1 if self.game.winner == self.game.player1 else -1
 
     def is_game_over(self):
-        return self.game_result() is not None
+        return self.game_result is not None
 
     def move(self, action):
         if self.game.phase in [0, 2]:
@@ -280,6 +296,31 @@ class GameStateForMCTS(TwoPlayersAbstractGameState):
         playable_cards.append('PASS')
         return playable_cards
 
+class MyMCTSNode(TwoPlayersGameMonteCarloTreeSearchNode):
+    def __init__(self, state, parent=None):
+        super().__init__(state, parent)
+
+    def best_child(self, c_param=1.4):
+        choices_weights = [
+            (c.q / c.n) + c_param * np.sqrt((2 * np.log(self.n) / c.n))
+            for c in self.children
+        ]
+        return self.children[np.argmax(choices_weights)]
+
+    def expand(self):
+        action = self.untried_actions.pop()
+        next_state = self.state.move(action)
+        child_node = MyMCTSNode(
+            next_state, parent=self
+        )
+        self.children.append(child_node)
+        return child_node
+
+
+class MyMCTS(MonteCarloTreeSearch):
+    def __init__(self, node):
+        super().__init__(node)
+
 def main():
     json_file = 'cards.json'
     with open(json_file, 'r') as f:
@@ -292,7 +333,7 @@ def main():
     while True:
         if game_manager.AutoGameStep():
             break
-    game.end_game()
+    game_manager.game.end_game()
 
 if __name__ == "__main__":
     main()
