@@ -28,12 +28,13 @@ class Deck:
         return len(self.cards)
 
 class Player:
-    def __init__(self, deck, life=20):
+    def __init__(self, deck, life=20, is_user_controlled=False):
         self.life = life
         self.deck = deck
         self.hand = []
         self.max_pp, self.temp_pp = 0, 0
         self.play_rule = 'random'
+        self.is_user_controlled = is_user_controlled
 
     def update_pp(self, turn):
         self.max_pp = turn
@@ -56,13 +57,16 @@ class Player:
         self.hand.append(card)
         return card, False
 
+    def get_playable_cards(self):
+        return [card for card in self.hand if card.cost <= self.temp_pp]
+
     def has_playable_cards(self):
-        if len([card for card in self.hand if card.cost <= self.temp_pp]):
+        if len(self.get_playable_cards()):
             return True
         return False
 
     def select_card_random(self):
-        playable_cards = [card for card in self.hand if card.cost <= self.temp_pp]
+        playable_cards = self.get_playable_cards()
         if random.random() < 1 / (len(playable_cards) + 1):
             return None
         selected_card = random.choice(playable_cards)
@@ -70,13 +74,16 @@ class Player:
 
 # Gameの状態を表現する
 class Game:
-    def __init__(self, cards_data):
+    def __init__(self, cards_data, mode='1'):
         self.CARDS_DATA = cards_data
         template_deck1 = self.create_template_deck(self.CARDS_DATA)
         template_deck2 = self.create_template_deck(self.CARDS_DATA)
         self.player1 = Player(template_deck1, 20)
-        self.player2 = Player(template_deck2, 20)
-        self.player2.play_rule = 'mcts'
+        if mode == '2':
+            self.player2 = Player(template_deck2, 20, is_user_controlled=True)
+            self.player2.play_rule = 'mcts'
+        else:
+            self.player2 = Player(template_deck2, 20)
 
         self.current_player = random.choice([self.player1, self.player2]) 
         self.opponent_player = self.player2 if self.current_player == self.player1 else self.player1
@@ -173,6 +180,32 @@ class GameManager():
     # phaseが進む条件==PASS
     def in_turn(self):
         if self.game.real:
+            if self.game.current_player.is_user_controlled:
+                print('Select your play card!')
+                self.display('current_player_hand')
+                if self.game.current_player.has_playable_cards():
+                    playable_cards = self.game.current_player.get_playable_cards()
+                    print(f'Your playable cards: {[card.name for card in playable_cards]}')
+                    selected_card_num = int(input('Enter the number of card: 0 is PASS.'))
+                    if selected_card_num == 0:
+                        self.game.phase = 2
+                        print('You selected PASS.')
+                        return False
+                    selected_card = playable_cards[selected_card_num-1]
+                    self.display('play_card', card=selected_card)
+                    if self.play_card(selected_card):
+                        self.game.winner = self.game.current_player
+                        return True
+                    self.display('current_player_hand')
+                    if not self.game.current_player.has_playable_cards():
+                        self.game.phase = 2
+                        if self.game.real:
+                            print('You has no playable cards! Must PASS.')
+                    return False
+                else:
+                    print('You have no playable cards! Must PASS.')
+                    self.game.phase = 2
+                    return False
             if self.game.current_player.play_rule == 'mcts':
                 print('Selecting by mcts.')
                 print('')
@@ -326,10 +359,14 @@ def main():
     with open(json_file, 'r') as f:
         cards_data = json.load(f)['cards']
 
-    game = Game(cards_data)
+    print("Select operation mode:")
+    print("1: Auto mode")
+    print("2: Player mode")
+    mode = input("Enter the number of the mode: ")
+    
+    game = Game(cards_data, mode=mode)
     game.setup_game()
     game_manager = GameManager(game)
-
     while True:
         if game_manager.AutoGameStep():
             break
