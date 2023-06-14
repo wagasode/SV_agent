@@ -1,2 +1,3 @@
 mctspy==0.1.1
 stable-baselines[mpi]==2.10.2
+gym
