@@ -6,7 +6,7 @@ from deck_structure import Deck
 from game_environment import Game, GameManager
 
 
-def create_template_deck(self, cards_data):
+def create_template_deck(cards_data):
     deck_cards = []
     # template_deck: card1:10, card2:10
     for card_data in cards_data:
